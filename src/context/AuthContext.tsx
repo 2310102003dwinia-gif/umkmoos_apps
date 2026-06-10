@@ -34,56 +34,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Cek sesi aktif saat pertama load
-    const initSession = async () => {
-      setLoading(true);
+    let mounted = true;
+    let subscription: any = null;
+
+    const initializeAuth = async () => {
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) throw sessionError;
-
-        if (session?.user) {
-          // Ambil profil + data bisnis sekaligus
-          const { data: profile, error: profileError } = await supabase
-            .from('users')
-            .select('*, businesses(name, address)')
-            .eq('id', session.user.id)
-            .single();
-
-          if (profileError && profileError.code !== 'PGRST116') {
-             console.error('Profile fetch error:', profileError);
+        setLoading(true);
+        // Supabase onAuthStateChange automatically fires INITIAL_SESSION event
+        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (!mounted) return;
+          
+          try {
+            if (session?.user) {
+              const { data: profile } = await supabase
+                .from('users')
+                .select('*, businesses(name, address)')
+                .eq('id', session.user.id)
+                .single();
+    
+              if (mounted) {
+                setUser(mapSupabaseUser(session.user, profile));
+              }
+            } else {
+              if (mounted) {
+                setUser(null);
+              }
+            }
+          } catch (err) {
+            console.error('Error fetching profile:', err);
+            if (mounted) setUser(null);
+          } finally {
+            if (mounted) {
+              setLoading(false);
+            }
           }
-
-          setUser(mapSupabaseUser(session.user, profile));
-        } else {
+        });
+        
+        subscription = data.subscription;
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
           setUser(null);
+          setLoading(false);
         }
-      } catch (err) {
-        console.error('Auth initialization error:', err);
-        setUser(null);
-      } finally {
-        setLoading(false);
       }
     };
 
-    initSession();
+    initializeAuth();
 
-    // Listener perubahan auth state (login/logout)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*, businesses(name, address)')
-          .eq('id', session.user.id)
-          .single();
-
-        setUser(mapSupabaseUser(session.user, profile));
-      } else {
-        setUser(null);
+    return () => {
+      mounted = false;
+      if (subscription) {
+        subscription.unsubscribe();
       }
-    });
-
-    return () => subscription.unsubscribe();
+    };
   }, []);
 
   const register = async (data: any) => {
