@@ -37,10 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     let subscription: any = null;
 
+    // Fallback: Jika Supabase hang lebih dari 3 detik, paksa loading selesai
+    const timeoutId = setTimeout(() => {
+      if (mounted && loading) {
+        console.warn('Supabase auth initialization timed out. Forcing load to finish.');
+        setLoading(false);
+      }
+    }, 3000);
+
     const initializeAuth = async () => {
       try {
         setLoading(true);
-        // Supabase onAuthStateChange automatically fires INITIAL_SESSION event
         const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
           if (!mounted) return;
           
@@ -66,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } finally {
             if (mounted) {
               setLoading(false);
+              clearTimeout(timeoutId);
             }
           }
         });
@@ -76,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mounted) {
           setUser(null);
           setLoading(false);
+          clearTimeout(timeoutId);
         }
       }
     };
@@ -84,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(timeoutId);
       if (subscription) {
         subscription.unsubscribe();
       }
