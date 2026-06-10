@@ -4,6 +4,6 @@ dist/
 coverage/
 .DS_Store
 *.log
-# Kita biarkan .env agar ikut terupload ke vercel
-# .env*
+.env
+.env.*
 !.env.example
