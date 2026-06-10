@@ -37,53 +37,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     let subscription: any = null;
 
-    // Fallback: Jika Supabase hang lebih dari 3 detik, paksa loading selesai
     const timeoutId = setTimeout(() => {
       if (mounted && loading) {
-        console.warn('Supabase auth initialization timed out. Forcing load to finish.');
+        console.warn('Supabase auth initialization timed out.');
         setLoading(false);
       }
-    }, 3000);
+    }, 5000);
+
+    const loadProfile = async (sessionUser: any) => {
+      try {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*, businesses(name, address)')
+          .eq('id', sessionUser.id)
+          .single();
+        if (mounted) setUser(mapSupabaseUser(sessionUser, profile));
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        if (mounted) setUser(mapSupabaseUser(sessionUser, null));
+      }
+    };
 
     const initializeAuth = async () => {
       try {
         setLoading(true);
-        const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+        
+        // 1. Ambil sesi awal secara eksplisit
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) throw error;
+
+        if (session?.user) {
+          await loadProfile(session.user);
+        } else {
+          if (mounted) setUser(null);
+        }
+
+        if (mounted) {
+          setLoading(false);
+          clearTimeout(timeoutId);
+        }
+
+        // 2. Dengarkan perubahan sesi (login/logout)
+        const { data } = supabase.auth.onAuthStateChange(async (event, newSession) => {
           if (!mounted) return;
+          if (event === 'INITIAL_SESSION') return; // Sudah ditangani getSession
           
-          try {
-            if (session?.user) {
-              const { data: profile } = await supabase
-                .from('users')
-                .select('*, businesses(name, address)')
-                .eq('id', session.user.id)
-                .single();
-    
-              if (mounted) {
-                setUser(mapSupabaseUser(session.user, profile));
-              }
-            } else {
-              if (mounted) {
-                setUser(null);
-              }
-            }
-          } catch (err) {
-            console.error('Error fetching profile:', err);
+          if (newSession?.user) {
+            await loadProfile(newSession.user);
+          } else {
             if (mounted) setUser(null);
-          } finally {
-            if (mounted) {
-              setLoading(false);
-              clearTimeout(timeoutId);
-            }
           }
         });
         
         subscription = data.subscription;
-
-        // Pancing Supabase agar segera memberikan sesi (tidak di-await agar tidak deadlock)
-        supabase.auth.getSession().then(({ error }) => {
-          if (error) console.error('GetSession error:', error);
-        });
 
       } catch (error) {
         console.error('Auth initialization error:', error);
