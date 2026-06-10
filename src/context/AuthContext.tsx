@@ -37,21 +37,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Cek sesi aktif saat pertama load
     const initSession = async () => {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) throw sessionError;
 
-      if (session?.user) {
-        // Ambil profil + data bisnis sekaligus
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*, businesses(name, address)')
-          .eq('id', session.user.id)
-          .single();
+        if (session?.user) {
+          // Ambil profil + data bisnis sekaligus
+          const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('*, businesses(name, address)')
+            .eq('id', session.user.id)
+            .single();
 
-        setUser(mapSupabaseUser(session.user, profile));
-      } else {
+          if (profileError && profileError.code !== 'PGRST116') {
+             console.error('Profile fetch error:', profileError);
+          }
+
+          setUser(mapSupabaseUser(session.user, profile));
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     initSession();
