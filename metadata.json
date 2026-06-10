@@ -1,0 +1,10 @@
+{
+  "name": "umkmoo's",
+  "description": "A comprehensive UMKM management dashboard with Sharia-compliant accounting and AI-powered transaction validation.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

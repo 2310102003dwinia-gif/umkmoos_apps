@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Fredoka", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: var(--color-primary-custom, #054d24);
+  --color-primary-light: var(--color-primary-light-custom, #054d241a);
+}
+
+@layer base {
+  :root {
+    --color-primary-custom: #054d24;
+    --color-primary-light-custom: rgba(5, 77, 36, 0.1);
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+  
+  body {
+    @apply bg-gray-50 text-zinc-900 transition-colors duration-300;
+  }
+  
+  html.dark body {
+    @apply bg-zinc-950 text-zinc-50;
+  }
+
+  /* Fallback for backgrounds if dark: bg fails */
+  .dark .bg-white {
+    @apply bg-zinc-900! border-zinc-800!;
+  }
+  
+  .dark .bg-gray-50 {
+    @apply bg-zinc-950! border-zinc-800!;
+  }
+
+  .dark .text-gray-900 {
+    @apply text-white!;
+  }
+  
+  .dark .text-gray-500 {
+    @apply text-zinc-400!;
+  }
+
+  .dark .border-gray-100, 
+  .dark .border-gray-200 {
+    @apply border-zinc-800!;
+  }
+}
+
+/* Print Styles for Receipts */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-receipt, .print-receipt * {
+    visibility: visible;
+  }
+  .print-receipt {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+    color: black !important;
+    font-family: monospace !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
