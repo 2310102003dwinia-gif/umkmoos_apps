@@ -79,6 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         
         subscription = data.subscription;
+
+        // Pancing Supabase agar segera memberikan sesi (tidak di-await agar tidak deadlock)
+        supabase.auth.getSession().then(({ error }) => {
+          if (error) console.error('GetSession error:', error);
+        });
+
       } catch (error) {
         console.error('Auth initialization error:', error);
         if (mounted) {
